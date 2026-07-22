@@ -69,14 +69,17 @@ function parseNaturalTask(text) {
     if(found>=0){let diff=(found-date.getDay()+7)%7||7;date=addDays(date,diff);title=title.replace(new RegExp(`\\b(on )?${days[found]}\\b`,'i'),'');}
     {
       const monthNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
-      const namedDate=title.match(new RegExp(`\\b(?:on\\s+)?(${monthNames.join('|')})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      const monthPattern=monthNames.join('|');
+      const monthFirst=title.match(new RegExp(`\\b(?:on\\s+)?(${monthPattern})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      const dayFirst=title.match(new RegExp(`\\b(?:on\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+(${monthPattern})(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      const namedDate=monthFirst||dayFirst;
       if(namedDate){
-        const month=monthNames.indexOf(namedDate[1].toLowerCase()), day=+namedDate[2];
+        const month=monthNames.indexOf((monthFirst?namedDate[1]:namedDate[2]).toLowerCase()), day=+(monthFirst?namedDate[2]:namedDate[1]);
         let year=+(namedDate[3]||date.getFullYear()), candidate=new Date(year,month,day);
         if(!namedDate[3]&&isoDate(candidate)<isoDate(date)) candidate=new Date(year+1,month,day);
         if(candidate.getMonth()===month&&candidate.getDate()===day){date=candidate;title=title.replace(namedDate[0],'');}
       } else {
-        const ordinal=title.match(/\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/i);
+        const ordinal=title.match(/\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/i)||title.match(/\bon\s+(?:the\s+)?(\d{1,2})\b/i);
         if(ordinal){
         const day=+ordinal[1], candidate=new Date(date.getFullYear(),date.getMonth(),day);
         if(candidate.getDate()===day){
