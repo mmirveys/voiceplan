@@ -50,6 +50,14 @@
           <div><p class="eyebrow">UP NEXT</p><h2>Your plan</h2></div>
           <button class="text-button" id="clearCompleted">Clear completed</button>
         </div>
+        <div class="calendar-toolbar">
+          <button id="prevWeek" aria-label="Previous week">‹</button>
+          <label class="date-picker-label">
+            <span id="calendarLabel">Choose date</span>
+            <input id="datePicker" type="date" aria-label="Choose a date from calendar">
+          </label>
+          <button id="nextWeek" aria-label="Next week">›</button>
+        </div>
         <div class="date-strip" id="dateStrip" aria-label="Choose a date"></div>
         <div id="taskList" class="task-list"></div>
         <div id="emptyState" class="empty-state" hidden>

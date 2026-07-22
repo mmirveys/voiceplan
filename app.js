@@ -25,12 +25,20 @@ function renderDates() {
   const today = new Date();
   const todayIso=isoDate(today), lastVisibleIso=isoDate(addDays(today,6));
   const start=selectedDate>=todayIso&&selectedDate<=lastVisibleIso?today:new Date(selectedDate+'T12:00:00');
+  $('#datePicker').value=selectedDate;
+  $('#calendarLabel').textContent=new Intl.DateTimeFormat('en',{month:'long',year:'numeric'}).format(new Date(selectedDate+'T12:00:00'));
   $('#dateStrip').innerHTML = Array.from({length:7},(_,i)=>{
     const d=addDays(start,i), iso=isoDate(d);
     const label=iso===todayIso?'Today':new Intl.DateTimeFormat('en',{weekday:'short'}).format(d);
     return `<button class="date-button ${iso===selectedDate?'active':''}" data-date="${iso}"><span>${label}</span><strong>${d.getDate()}</strong></button>`;
   }).join('');
-  document.querySelectorAll('.date-button').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;currentView='plan';renderDates();renderTasks();});
+  document.querySelectorAll('.date-button').forEach(b=>b.onclick=()=>selectPlanDate(b.dataset.date));
+}
+
+function selectPlanDate(date) {
+  selectedDate=date;currentView='plan';
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view==='plan'));
+  renderDates();renderTasks();
 }
 
 function renderTasks() {
@@ -72,12 +80,15 @@ function parseNaturalTask(text) {
     if(found>=0){let diff=(found-date.getDay()+7)%7||7;date=addDays(date,diff);title=title.replace(new RegExp(`\\b(on )?${days[found]}\\b`,'i'),'');}
     {
       const monthNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const ordinalWords=['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth','tenth','eleventh','twelfth','thirteenth','fourteenth','fifteenth','sixteenth','seventeenth','eighteenth','nineteenth','twentieth','twenty-first','twenty-second','twenty-third','twenty-fourth','twenty-fifth','twenty-sixth','twenty-seventh','twenty-eighth','twenty-ninth','thirtieth','thirty-first'];
       const monthPattern=monthNames.join('|');
       const monthFirst=title.match(new RegExp(`\\b(?:on\\s+)?(${monthPattern})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,'i'));
       const dayFirst=title.match(new RegExp(`\\b(?:on\\s+(?:the\\s+)?)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+(${monthPattern})(?:,?\\s+(\\d{4}))?\\b`,'i'));
-      const namedDate=monthFirst||dayFirst;
+      const wordFirst=title.match(new RegExp(`\\b(?:on\\s+(?:the\\s+)?)?(${ordinalWords.join('|')})(?:\\s+of)?\\s+(${monthPattern})(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      const namedDate=monthFirst||dayFirst||wordFirst;
       if(namedDate){
-        const month=monthNames.indexOf((monthFirst?namedDate[1]:namedDate[2]).toLowerCase()), day=+(monthFirst?namedDate[2]:namedDate[1]);
+        const month=monthNames.indexOf((monthFirst?namedDate[1]:namedDate[2]).toLowerCase());
+        const day=wordFirst?ordinalWords.indexOf(namedDate[1].toLowerCase())+1:+(monthFirst?namedDate[2]:namedDate[1]);
         let year=+(namedDate[3]||date.getFullYear()), candidate=new Date(year,month,day);
         if(!namedDate[3]&&isoDate(candidate)<isoDate(date)) candidate=new Date(year+1,month,day);
         if(candidate.getMonth()===month&&candidate.getDate()===day){date=candidate;title=title.replace(namedDate[0],'');}
@@ -117,6 +128,9 @@ function showToast(msg){const el=$('#toast');el.textContent=msg;el.classList.add
 
 $('#quickAdd').onclick=()=>{if($('#quickInput').value.trim()){addFromText($('#quickInput').value);$('#quickInput').value='';}};
 $('#quickInput').onkeydown=e=>{if(e.key==='Enter')$('#quickAdd').click();};
+$('#prevWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),-7)));
+$('#nextWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),7)));
+$('#datePicker').onchange=e=>{if(e.target.value)selectPlanDate(e.target.value);};
 $('#taskForm').addEventListener('submit',e=>{if(e.submitter?.value==='default')submitTask();});
 $('#clearCompleted').onclick=()=>{const before=tasks.length;tasks=tasks.filter(t=>!t.done);save();showToast(`${before-tasks.length} completed task${before-tasks.length===1?'':'s'} cleared`);};
 $('#openSettings').onclick=()=>$('#settingsDialog').showModal();
