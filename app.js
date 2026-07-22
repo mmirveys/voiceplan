@@ -65,6 +65,16 @@ function parseNaturalTask(text) {
     const days=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const found=days.findIndex(d=>new RegExp(`\\b${d}\\b`,'i').test(title));
     if(found>=0){let diff=(found-date.getDay()+7)%7||7;date=addDays(date,diff);title=title.replace(new RegExp(`\\b(on )?${days[found]}\\b`,'i'),'');}
+    else {
+      const ordinal=title.match(/\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/i);
+      if(ordinal){
+        const day=+ordinal[1], candidate=new Date(date.getFullYear(),date.getMonth(),day);
+        if(candidate.getDate()===day){
+          if(isoDate(candidate)<isoDate(date)) candidate.setMonth(candidate.getMonth()+1);
+          if(candidate.getDate()===day){date=candidate;title=title.replace(ordinal[0],'');}
+        }
+      }
+    }
   }
   const tm=title.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?(?:\s*o[’']?\s*clock)?\b/i);
   if(tm){let h=+tm[1],m=+(tm[2]||0),ampm=tm[3]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;if(h<24&&m<60){time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;title=title.replace(tm[0],'');}}
