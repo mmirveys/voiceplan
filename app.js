@@ -1,6 +1,9 @@
 const $ = (s) => document.querySelector(s);
 const storeKey = 'voiceplan-tasks-v1';
 let tasks = JSON.parse(localStorage.getItem(storeKey) || '[]');
+function cleanTaskTitle(title) { return title.replace(/\b(?:on\s+the|at|on)\s*[,;:-]?\s*$/i,'').replace(/\s{2,}/g,' ').trim(); }
+const repairedTasks = tasks.map(task=>({...task,title:cleanTaskTitle(task.title)}));
+if(repairedTasks.some((task,i)=>task.title!==tasks[i].title)){tasks=repairedTasks;localStorage.setItem(storeKey,JSON.stringify(tasks));}
 let selectedDate = isoDate(new Date());
 let currentView = 'plan';
 let editingId = null;
@@ -92,7 +95,7 @@ function parseNaturalTask(text) {
   }
   const tm=title.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?(?:\s*o[’']?\s*clock)?\b/i);
   if(tm){let h=+tm[1],m=+(tm[2]||0),ampm=tm[3]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;if(h<24&&m<60){time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;title=title.replace(tm[0],'');}}
-  title=title.replace(/\b(?:on\s+the|at|on)\s*[,;:-]?\s*$/i,'').replace(/\s{2,}/g,' ').trim();
+  title=cleanTaskTitle(title);
   return {title:title.charAt(0).toUpperCase()+title.slice(1),date:isoDate(date),time};
 }
 function addFromText(text) {
