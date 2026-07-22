@@ -66,7 +66,7 @@ function parseNaturalTask(text) {
     const found=days.findIndex(d=>new RegExp(`\\b${d}\\b`,'i').test(title));
     if(found>=0){let diff=(found-date.getDay()+7)%7||7;date=addDays(date,diff);title=title.replace(new RegExp(`\\b(on )?${days[found]}\\b`,'i'),'');}
   }
-  const tm=title.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b/i);
+  const tm=title.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?(?:\s*o[’']?\s*clock)?\b/i);
   if(tm){let h=+tm[1],m=+(tm[2]||0),ampm=tm[3]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;if(h<24&&m<60){time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;title=title.replace(tm[0],'');}}
   title=title.replace(/\b(at|on)\s*$/i,'').replace(/\s{2,}/g,' ').trim();
   return {title:title.charAt(0).toUpperCase()+title.slice(1),date:isoDate(date),time};
@@ -81,7 +81,7 @@ function setupVoice() {
   if(!SpeechRecognition){$('#voiceHint').textContent='Voice input is not supported here — you can type below';$('#micButton').onclick=()=>showToast('Try Chrome or Safari for voice input');return;}
   const rec=new SpeechRecognition();rec.lang=navigator.language||'en-US';rec.interimResults=true;rec.continuous=false;
   rec.onstart=()=>{$('#voiceCard').classList.add('listening');$('#voiceTitle').textContent='I’m listening…';$('#voiceHint').textContent='Say a task, date, and time';};
-  rec.onresult=e=>{const text=Array.from(e.results).map(r=>r[0].transcript).join('');$('#voiceHint').textContent=text;if(e.results[e.results.length-1].isFinal)addFromText(text);};
+  rec.onresult=e=>{const text=Array.from(e.results).map(r=>r[0].transcript).join('');const parsed=parseNaturalTask(text);$('#voiceHint').textContent=parsed.title||text;if(e.results[e.results.length-1].isFinal)addFromText(text);};
   rec.onend=()=>{$('#voiceCard').classList.remove('listening');$('#voiceTitle').textContent='Tap to plan with your voice';setTimeout(()=>{$('#voiceHint').textContent='Try “Lunch with Maya tomorrow at 12”';},2200);};
   rec.onerror=e=>{showToast(e.error==='not-allowed'?'Microphone permission is needed':'I couldn’t hear that — please try again');};
   $('#micButton').onclick=()=>{try{rec.start()}catch{rec.stop()}};
