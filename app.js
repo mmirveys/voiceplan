@@ -71,7 +71,7 @@ function parseNaturalTask(text) {
       const monthNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
       const monthPattern=monthNames.join('|');
       const monthFirst=title.match(new RegExp(`\\b(?:on\\s+)?(${monthPattern})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,'i'));
-      const dayFirst=title.match(new RegExp(`\\b(?:on\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+(${monthPattern})(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      const dayFirst=title.match(new RegExp(`\\b(?:on\\s+(?:the\\s+)?)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+(${monthPattern})(?:,?\\s+(\\d{4}))?\\b`,'i'));
       const namedDate=monthFirst||dayFirst;
       if(namedDate){
         const month=monthNames.indexOf((monthFirst?namedDate[1]:namedDate[2]).toLowerCase()), day=+(monthFirst?namedDate[2]:namedDate[1]);
