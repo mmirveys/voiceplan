@@ -20,9 +20,11 @@ function setupGreeting() {
 
 function renderDates() {
   const today = new Date();
+  const todayIso=isoDate(today), lastVisibleIso=isoDate(addDays(today,6));
+  const start=selectedDate>=todayIso&&selectedDate<=lastVisibleIso?today:new Date(selectedDate+'T12:00:00');
   $('#dateStrip').innerHTML = Array.from({length:7},(_,i)=>{
-    const d=addDays(today,i), iso=isoDate(d);
-    const label=i===0?'Today':new Intl.DateTimeFormat('en',{weekday:'short'}).format(d);
+    const d=addDays(start,i), iso=isoDate(d);
+    const label=iso===todayIso?'Today':new Intl.DateTimeFormat('en',{weekday:'short'}).format(d);
     return `<button class="date-button ${iso===selectedDate?'active':''}" data-date="${iso}"><span>${label}</span><strong>${d.getDate()}</strong></button>`;
   }).join('');
   document.querySelectorAll('.date-button').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;currentView='plan';renderDates();renderTasks();});
@@ -65,13 +67,22 @@ function parseNaturalTask(text) {
     const days=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const found=days.findIndex(d=>new RegExp(`\\b${d}\\b`,'i').test(title));
     if(found>=0){let diff=(found-date.getDay()+7)%7||7;date=addDays(date,diff);title=title.replace(new RegExp(`\\b(on )?${days[found]}\\b`,'i'),'');}
-    else {
-      const ordinal=title.match(/\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/i);
-      if(ordinal){
+    {
+      const monthNames=['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const namedDate=title.match(new RegExp(`\\b(?:on\\s+)?(${monthNames.join('|')})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,'i'));
+      if(namedDate){
+        const month=monthNames.indexOf(namedDate[1].toLowerCase()), day=+namedDate[2];
+        let year=+(namedDate[3]||date.getFullYear()), candidate=new Date(year,month,day);
+        if(!namedDate[3]&&isoDate(candidate)<isoDate(date)) candidate=new Date(year+1,month,day);
+        if(candidate.getMonth()===month&&candidate.getDate()===day){date=candidate;title=title.replace(namedDate[0],'');}
+      } else {
+        const ordinal=title.match(/\b(?:on\s+(?:the\s+)?)?(\d{1,2})(?:st|nd|rd|th)\b/i);
+        if(ordinal){
         const day=+ordinal[1], candidate=new Date(date.getFullYear(),date.getMonth(),day);
         if(candidate.getDate()===day){
           if(isoDate(candidate)<isoDate(date)) candidate.setMonth(candidate.getMonth()+1);
           if(candidate.getDate()===day){date=candidate;title=title.replace(ordinal[0],'');}
+        }
         }
       }
     }
