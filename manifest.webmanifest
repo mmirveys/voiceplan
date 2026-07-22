@@ -1,0 +1,10 @@
+{
+  "name": "VoicePlan",
+  "short_name": "VoicePlan",
+  "description": "Plan your day naturally with your voice.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f3ed",
+  "theme_color": "#315c49",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

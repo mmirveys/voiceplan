@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f3ed">
+  <meta name="description" content="VoicePlan — plan your day with your voice.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <title>VoicePlan</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="VoicePlan home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>VoicePlan</span>
+      </a>
+      <button class="icon-button" id="openSettings" aria-label="Open settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-1.42 1.42-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.55V20h-2v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-1.42-1.42.06-.06A1.7 1.7 0 0 0 9.35 15a1.7 1.7 0 0 0-1.55-1.03H7.7v-2h.1a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 1.42-1.42.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.03-1.55V6.3h2v.09a1.7 1.7 0 0 0 1.1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 9l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.55 1.03h.09v2h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+      </button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow" id="todayLabel">YOUR DAY</p>
+        <h1>Good <span id="dayPeriod">morning</span>.<br><em>What’s the plan?</em></h1>
+        <p class="hero-copy">Speak naturally. We’ll turn your thoughts into a clear, realistic day.</p>
+
+        <div class="voice-card" id="voiceCard">
+          <button class="mic-button" id="micButton" aria-label="Start voice planning">
+            <span class="pulse"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></svg>
+          </button>
+          <div class="voice-text">
+            <strong id="voiceTitle">Tap to plan with your voice</strong>
+            <span id="voiceHint">Try “Lunch with Maya tomorrow at 12”</span>
+          </div>
+        </div>
+
+        <div class="quick-add">
+          <input id="quickInput" type="text" autocomplete="off" placeholder="Or type a task…" aria-label="New task">
+          <button id="quickAdd" aria-label="Add task">+</button>
+        </div>
+      </section>
+
+      <section class="planner-section">
+        <div class="section-heading">
+          <div><p class="eyebrow">UP NEXT</p><h2>Your plan</h2></div>
+          <button class="text-button" id="clearCompleted">Clear completed</button>
+        </div>
+        <div class="date-strip" id="dateStrip" aria-label="Choose a date"></div>
+        <div id="taskList" class="task-list"></div>
+        <div id="emptyState" class="empty-state" hidden>
+          <div class="empty-icon">✓</div>
+          <h3>A clear day</h3>
+          <p>Add a task or use your voice to shape the day.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <button class="active" data-view="plan"><span>⌂</span>Plan</button>
+      <button data-view="all"><span>☷</span>All tasks</button>
+    </nav>
+  </div>
+
+  <dialog id="taskDialog">
+    <form method="dialog" id="taskForm">
+      <div class="dialog-head"><h2 id="dialogTitle">New task</h2><button value="cancel" class="close-button" aria-label="Close">×</button></div>
+      <label>Task<input id="taskTitle" required maxlength="120" placeholder="What needs doing?"></label>
+      <div class="form-row">
+        <label>Date<input id="taskDate" type="date" required></label>
+        <label>Time<input id="taskTime" type="time"></label>
+      </div>
+      <label>Priority<select id="taskPriority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
+      <menu><button value="cancel" class="secondary">Cancel</button><button id="saveTask" value="default">Save task</button></menu>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog">
+      <div class="dialog-head"><h2>VoicePlan</h2><button class="close-button" value="close" aria-label="Close">×</button></div>
+      <p>Your tasks are saved only in this browser. Voice recognition uses your browser’s speech service when supported.</p>
+      <button id="installButton" class="full-button" type="button" hidden>Install VoicePlan</button>
+      <button id="deleteAll" class="danger-button" type="button">Delete all tasks</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
