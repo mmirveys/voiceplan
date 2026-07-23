@@ -153,7 +153,6 @@ function renderTimer() {
   document.querySelector('[data-timer-mode="focus"]').textContent=`Focus · ${Math.round(timerDurations.focus/60)} min`;
   document.querySelector('[data-timer-mode="break"]').textContent=`Break · ${Math.round(timerDurations.break/60)} min`;
   const durationMinutes=Math.round(duration/60);
-  $('#timerDurationLabel').textContent=durationMinutes===60?'1 hour':`${durationMinutes} minutes`;
   if(document.activeElement!==$('#customMinutes'))$('#customMinutes').value=durationMinutes;
   document.querySelectorAll('[data-timer-preset]').forEach(b=>b.classList.toggle('active',+b.dataset.timerPreset===durationMinutes));
   $('#sessionTotal').textContent=completedSessions;
@@ -170,7 +169,7 @@ function tickTimer() {
   if(timerRemaining===0){
     const finishedMode=timerMode;stopTimer();
     if(finishedMode==='focus'){completedSessions++;localStorage.setItem(sessionKey,completedSessions);}
-    if(navigator.vibrate)navigator.vibrate([150,80,150]);notifyTimerFinished(finishedMode);
+    if(navigator.vibrate)navigator.vibrate([200,100,200,100,350]);notifyTimerFinished(finishedMode);
     chooseTimerMode(finishedMode==='focus'?'break':'focus');
     showToast(finishedMode==='focus'?'Focus complete — take a breath':'Break complete — ready to focus?');
   }
@@ -179,22 +178,22 @@ function toggleTimer() {
   if(timerRunning){timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));stopTimer();renderTimer();return;}
   timerRunning=true;timerEndAt=Date.now()+timerRemaining*1000;timerInterval=setInterval(tickTimer,250);renderTimer();
 }
-function setTimerMinutes(minutes,preserveElapsed=false) {
+function setTimerMinutes(minutes) {
   const validMinutes=Math.min(180,Math.max(1,Math.round(Number(minutes)||1)));
-  const previous=timerDurations[timerMode],next=validMinutes*60,difference=next-previous;
-  timerDurations[timerMode]=next;timerRemaining=preserveElapsed?Math.max(0,timerRemaining+difference):next;
+  const next=validMinutes*60;
+  timerDurations[timerMode]=next;timerRemaining=next;
   if(timerRunning)timerEndAt=Date.now()+timerRemaining*1000;
   localStorage.setItem('voiceplan-timer-durations',JSON.stringify(timerDurations));renderTimer();
 }
-function adjustTimer(minutes) { setTimerMinutes(timerDurations[timerMode]/60+minutes,true); }
-function playAlarm() {
+function playAlarm(preview=false) {
   const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!alarmEnabled||!AudioContextClass)return;
   audioContext=audioContext||new AudioContextClass();audioContext.resume();
-  [0,.28,.56].forEach((delay,i)=>{const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.frequency.value=i===1?740:880;gain.gain.setValueAtTime(.0001,audioContext.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.22,audioContext.currentTime+delay+.02);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+.22);oscillator.start(audioContext.currentTime+delay);oscillator.stop(audioContext.currentTime+delay+.24);});
+  const notes=preview?[659,784,880]:Array.from({length:16},(_,i)=>[659,784,880,784][i%4]);
+  notes.forEach((frequency,i)=>{const delay=i*.5,oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,audioContext.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.18,audioContext.currentTime+delay+.03);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+.38);oscillator.start(audioContext.currentTime+delay);oscillator.stop(audioContext.currentTime+delay+.4);});
 }
 async function enableAlarm() {
   alarmEnabled=true;localStorage.setItem('voiceplan-alarm-enabled','true');
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){audioContext=audioContext||new AudioContextClass();await audioContext.resume();playAlarm();}
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){audioContext=audioContext||new AudioContextClass();await audioContext.resume();playAlarm(true);}
   if('Notification'in window&&Notification.permission==='default')await Notification.requestPermission();
   renderTimer();showToast('Notification'in window&&Notification.permission==='granted'?'Alarm and notifications enabled':'Alarm sound enabled');
 }
@@ -211,8 +210,6 @@ $('#datePicker').onchange=e=>{if(e.target.value)selectPlanDate(e.target.value);}
 document.querySelectorAll('[data-timer-mode]').forEach(b=>b.onclick=()=>chooseTimerMode(b.dataset.timerMode));
 $('#timerToggle').onclick=toggleTimer;
 $('#timerReset').onclick=()=>chooseTimerMode(timerMode);
-$('#timerMinus').onclick=()=>adjustTimer(-5);
-$('#timerPlus').onclick=()=>adjustTimer(5);
 document.querySelectorAll('[data-timer-preset]').forEach(b=>b.onclick=()=>setTimerMinutes(b.dataset.timerPreset));
 $('#customMinutes').onchange=e=>setTimerMinutes(e.target.value);
 $('#customMinutes').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();}};
