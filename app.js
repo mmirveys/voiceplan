@@ -13,7 +13,7 @@ const timerDurations={focus:savedDurations.focus||25*60,break:savedDurations.bre
 let timerMode='focus',timerRemaining=timerDurations.focus,timerRunning=false,timerEndAt=0,timerInterval;
 const sessionKey=`voiceplan-focus-${isoDate(new Date())}`;
 let completedSessions=Number(localStorage.getItem(sessionKey)||0);
-let alarmEnabled=localStorage.getItem('voiceplan-alarm-enabled')==='true',audioContext;
+let alarmEnabled=localStorage.getItem('voiceplan-alarm-enabled')==='true',audioContext,alarmNodes=[];
 
 function isoDate(date) { const d = new Date(date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate()+n); return d; }
@@ -159,7 +159,8 @@ function renderTimer() {
   $('#sessionDots').innerHTML=Array.from({length:Math.min(completedSessions,8)},()=>'<i></i>').join('');
   document.title=timerRunning?`${$('#timerDisplay').textContent} · VoicePlan`:'VoicePlan';
   $('#enableAlarm').classList.toggle('enabled',alarmEnabled);
-  $('#enableAlarm').querySelector('strong').textContent=alarmEnabled?'Alarm enabled':'Enable alarm';
+  $('#enableAlarm').querySelector('strong').textContent=alarmEnabled?'Test alarm sound':'Enable alarm';
+  $('#enableAlarm').querySelector('small').textContent=alarmEnabled?'Tap to play a short test chime':'Sound and notification when time is up';
 }
 
 function stopTimer() { clearInterval(timerInterval);timerInterval=null;timerRunning=false; }
@@ -176,6 +177,7 @@ function tickTimer() {
 }
 function toggleTimer() {
   if(timerRunning){timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));stopTimer();renderTimer();return;}
+  if(alarmEnabled)prepareAlarmAudio();
   timerRunning=true;timerEndAt=Date.now()+timerRemaining*1000;timerInterval=setInterval(tickTimer,250);renderTimer();
 }
 function setTimerMinutes(minutes) {
@@ -185,17 +187,21 @@ function setTimerMinutes(minutes) {
   if(timerRunning)timerEndAt=Date.now()+timerRemaining*1000;
   localStorage.setItem('voiceplan-timer-durations',JSON.stringify(timerDurations));renderTimer();
 }
-function playAlarm(preview=false) {
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!alarmEnabled||!AudioContextClass)return;
-  audioContext=audioContext||new AudioContextClass();audioContext.resume();
-  const notes=preview?[659,784,880]:Array.from({length:16},(_,i)=>[659,784,880,784][i%4]);
-  notes.forEach((frequency,i)=>{const delay=i*.5,oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,audioContext.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.18,audioContext.currentTime+delay+.03);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+.38);oscillator.start(audioContext.currentTime+delay);oscillator.stop(audioContext.currentTime+delay+.4);});
+async function prepareAlarmAudio() {
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)return false;
+  audioContext=audioContext||new AudioContextClass();if(audioContext.state==='suspended')await audioContext.resume();return audioContext.state==='running';
+}
+function stopAlarmSound() { alarmNodes.forEach(node=>{try{node.stop();}catch{}});alarmNodes=[]; }
+async function playAlarm(preview=false) {
+  if(!alarmEnabled||!await prepareAlarmAudio())return false;stopAlarmSound();
+  const notes=preview?[659,784,880,988,880,784]:Array.from({length:40},(_,i)=>[659,784,880,988,880,784][i%6]);
+  notes.forEach((frequency,i)=>{const delay=i*.5,oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.0001,audioContext.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.32,audioContext.currentTime+delay+.03);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+.4);oscillator.start(audioContext.currentTime+delay);oscillator.stop(audioContext.currentTime+delay+.44);alarmNodes.push(oscillator);});return true;
 }
 async function enableAlarm() {
   alarmEnabled=true;localStorage.setItem('voiceplan-alarm-enabled','true');
-  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){audioContext=audioContext||new AudioContextClass();await audioContext.resume();playAlarm(true);}
+  const soundWorks=await playAlarm(true);
   if('Notification'in window&&Notification.permission==='default')await Notification.requestPermission();
-  renderTimer();showToast('Notification'in window&&Notification.permission==='granted'?'Alarm and notifications enabled':'Alarm sound enabled');
+  renderTimer();showToast(soundWorks?('Notification'in window&&Notification.permission==='granted'?'Alarm and notifications enabled':'Alarm sound enabled — test chime playing'):'Sound is blocked — check iPhone volume');
 }
 async function notifyTimerFinished(mode) {
   playAlarm();
