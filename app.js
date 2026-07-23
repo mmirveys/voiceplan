@@ -152,7 +152,10 @@ function renderTimer() {
   document.querySelectorAll('[data-timer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.timerMode===timerMode));
   document.querySelector('[data-timer-mode="focus"]').textContent=`Focus · ${Math.round(timerDurations.focus/60)} min`;
   document.querySelector('[data-timer-mode="break"]').textContent=`Break · ${Math.round(timerDurations.break/60)} min`;
-  $('#timerDurationLabel').textContent=`${Math.round(duration/60)} minutes`;
+  const durationMinutes=Math.round(duration/60);
+  $('#timerDurationLabel').textContent=durationMinutes===60?'1 hour':`${durationMinutes} minutes`;
+  if(document.activeElement!==$('#customMinutes'))$('#customMinutes').value=durationMinutes;
+  document.querySelectorAll('[data-timer-preset]').forEach(b=>b.classList.toggle('active',+b.dataset.timerPreset===durationMinutes));
   $('#sessionTotal').textContent=completedSessions;
   $('#sessionDots').innerHTML=Array.from({length:Math.min(completedSessions,8)},()=>'<i></i>').join('');
   document.title=timerRunning?`${$('#timerDisplay').textContent} · VoicePlan`:'VoicePlan';
@@ -176,12 +179,14 @@ function toggleTimer() {
   if(timerRunning){timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));stopTimer();renderTimer();return;}
   timerRunning=true;timerEndAt=Date.now()+timerRemaining*1000;timerInterval=setInterval(tickTimer,250);renderTimer();
 }
-function adjustTimer(minutes) {
-  const previous=timerDurations[timerMode],next=Math.min(180*60,Math.max(60,previous+minutes*60)),difference=next-previous;
-  timerDurations[timerMode]=next;timerRemaining=Math.max(0,timerRemaining+difference);
-  if(timerRunning)timerEndAt+=difference*1000;
+function setTimerMinutes(minutes,preserveElapsed=false) {
+  const validMinutes=Math.min(180,Math.max(1,Math.round(Number(minutes)||1)));
+  const previous=timerDurations[timerMode],next=validMinutes*60,difference=next-previous;
+  timerDurations[timerMode]=next;timerRemaining=preserveElapsed?Math.max(0,timerRemaining+difference):next;
+  if(timerRunning)timerEndAt=Date.now()+timerRemaining*1000;
   localStorage.setItem('voiceplan-timer-durations',JSON.stringify(timerDurations));renderTimer();
 }
+function adjustTimer(minutes) { setTimerMinutes(timerDurations[timerMode]/60+minutes,true); }
 function playAlarm() {
   const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!alarmEnabled||!AudioContextClass)return;
   audioContext=audioContext||new AudioContextClass();audioContext.resume();
@@ -208,6 +213,9 @@ $('#timerToggle').onclick=toggleTimer;
 $('#timerReset').onclick=()=>chooseTimerMode(timerMode);
 $('#timerMinus').onclick=()=>adjustTimer(-5);
 $('#timerPlus').onclick=()=>adjustTimer(5);
+document.querySelectorAll('[data-timer-preset]').forEach(b=>b.onclick=()=>setTimerMinutes(b.dataset.timerPreset));
+$('#customMinutes').onchange=e=>setTimerMinutes(e.target.value);
+$('#customMinutes').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();e.target.blur();}};
 $('#enableAlarm').onclick=enableAlarm;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&timerRunning)tickTimer();});
 $('#taskForm').addEventListener('submit',e=>{if(e.submitter?.value==='default')submitTask();});

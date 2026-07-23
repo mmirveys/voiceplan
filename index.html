@@ -98,6 +98,16 @@
             <span id="timerDurationLabel">25 minutes</span>
             <button id="timerPlus" aria-label="Add 5 minutes">+ 5 min</button>
           </div>
+          <div class="focus-rhythms">
+            <p>Choose your rhythm</p>
+            <div class="rhythm-grid">
+              <button class="active" data-timer-preset="25"><strong>25</strong><span>Sprint</span></button>
+              <button data-timer-preset="45"><strong>45</strong><span>Deep</span></button>
+              <button data-timer-preset="60"><strong>60</strong><span>Flow</span></button>
+              <button data-timer-preset="90"><strong>90</strong><span>Immerse</span></button>
+            </div>
+            <label class="custom-time"><span>Custom</span><input id="customMinutes" type="number" min="1" max="180" value="25" inputmode="numeric"><span>minutes</span></label>
+          </div>
           <div class="timer-ring" id="timerRing">
             <div class="timer-ring-inner">
               <span id="timerModeLabel">FOCUS SESSION</span>
