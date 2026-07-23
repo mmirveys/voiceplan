@@ -14,6 +14,69 @@ let timerMode='focus',timerRemaining=timerDurations.focus,timerRunning=false,tim
 const sessionKey=`voiceplan-focus-${isoDate(new Date())}`;
 let completedSessions=Number(localStorage.getItem(sessionKey)||0);
 let alarmEnabled=localStorage.getItem('voiceplan-alarm-enabled')==='true',audioContext,alarmNodes=[];
+const motivationHistoryKey='voiceplan-motivation-history';
+const motivationMessages=[
+  'Mirveys, focus on the next task—not the entire journey.',
+  'Consistency today creates progress tomorrow.',
+  'Start small, stay focused, and finish strong.',
+  'You do not need more time. You need a clear next step.',
+  'One focused hour can change the direction of your day.',
+  'Finish the important task before starting another.',
+  'Progress comes from returning to the work.',
+  'A clear priority makes the next step easier.',
+  'Mirveys, protect your attention and use it deliberately.',
+  'Do the useful thing, even when it feels ordinary.',
+  'Small actions become reliable results through repetition.',
+  'Choose one task. Give it your full attention.',
+  'Discipline is keeping the promise you made this morning.',
+  'Make progress visible: complete one meaningful task.',
+  'Mirveys, steady work will take you further than urgency.',
+  'Begin before you feel completely ready.',
+  'Reduce the noise. Keep the next action clear.',
+  'A finished task is more valuable than a perfect plan.',
+  'Keep the pace sustainable and the direction clear.',
+  'Focus is deciding what can wait.',
+  'Mirveys, today needs your attention—not your pressure.',
+  'Complete the task that will make the rest easier.',
+  'Reliable progress is built on ordinary focused days.',
+  'Give the next 25 minutes a single purpose.',
+  'Do not restart the plan. Continue from where you are.',
+  'Mirveys, make the next move simple and specific.',
+  'Consistency means returning, not being perfect.',
+  'Close the open loop before creating another.',
+  'Work calmly. Finish deliberately.',
+  'A useful day is built one completed task at a time.',
+  'Mirveys, your plan works when you work the plan.',
+  'Start with the task you have been postponing.',
+  'Attention compounds when it stays in one place.',
+  'Leave enough energy to return tomorrow.',
+  'Decide, begin, and stay with it.',
+  'Mirveys, let completion be today’s measure of progress.',
+  'The next clear action is enough for now.',
+  'Keep moving without rushing.',
+  'Make today count through focused, practical work.',
+  'Your routine becomes your progress.',
+  'Mirveys, finish one thing before improving everything.',
+  'A calm mind can still move with purpose.',
+  'Use your best attention on your highest priority.',
+  'Momentum begins when the first task is completed.',
+  'Do the work that tomorrow will thank you for.',
+  'Mirveys, clarity grows when you take action.',
+  'One honest hour of work is a strong result.',
+  'Stay with the task until the next milestone is real.',
+  'Progress does not need drama. It needs repetition.',
+  'Turn intention into one visible result.',
+  'Mirveys, a focused day starts with a firm first choice.',
+  'Plan less once the next step is clear.',
+  'Keep your standards high and your steps manageable.',
+  'The goal is not to be busy. The goal is to finish.',
+  'Mirveys, build confidence by completing what you start.',
+  'A short focused session is better than a delayed perfect one.',
+  'Let today’s priorities stay small enough to complete.',
+  'Return your attention to what matters now.',
+  'Make the task smaller, then begin.',
+  'End the day with fewer open loops.'
+];
 
 function isoDate(date) { const d = new Date(date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate()+n); return d; }
@@ -142,6 +205,15 @@ function setupVoice() {
 }
 function showToast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),2300);}
 
+function showMotivation() {
+  let recent=[];try{recent=JSON.parse(localStorage.getItem(motivationHistoryKey)||'[]');if(!Array.isArray(recent))recent=[];}catch{recent=[];}
+  let available=motivationMessages.map((_,index)=>index).filter(index=>!recent.includes(index));
+  if(!available.length){recent=[];available=motivationMessages.map((_,index)=>index);}
+  const index=available[Math.floor(Math.random()*available.length)],card=$('#motivationCard');
+  card.classList.remove('visible');void card.offsetWidth;$('#motivationMessage').textContent=motivationMessages[index];card.classList.add('visible');
+  localStorage.setItem(motivationHistoryKey,JSON.stringify([index,...recent.filter(item=>item!==index)].slice(0,12)));
+}
+
 function renderTimer() {
   const mins=Math.floor(timerRemaining/60),secs=timerRemaining%60,duration=timerDurations[timerMode];
   $('#timerDisplay').textContent=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
@@ -210,6 +282,7 @@ async function notifyTimerFinished(mode) {
 
 $('#quickAdd').onclick=()=>{if($('#quickInput').value.trim()){addFromText($('#quickInput').value);$('#quickInput').value='';}};
 $('#quickInput').onkeydown=e=>{if(e.key==='Enter')$('#quickAdd').click();};
+$('#newMotivation').onclick=showMotivation;
 $('#prevWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),-7)));
 $('#nextWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),7)));
 $('#datePicker').onchange=e=>{if(e.target.value)selectPlanDate(e.target.value);};
@@ -232,4 +305,4 @@ if('serviceWorker' in navigator){
   let refreshing=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!refreshing){refreshing=true;location.reload();}});
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').then(registration=>registration.update()));
 }
-setupGreeting();renderDates();renderTasks();renderTimer();setupVoice();
+setupGreeting();showMotivation();renderDates();renderTasks();renderTimer();setupVoice();

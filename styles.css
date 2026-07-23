@@ -18,6 +18,13 @@ button { cursor:pointer; }
 h1 { font-size:clamp(42px,8vw,66px);line-height:1.02;letter-spacing:-.045em;margin:0;font-weight:600; }
 h1 em { font-family:"Playfair Display",serif;color:var(--green);font-weight:600; }
 .hero-copy { color:var(--muted);font-size:16px;line-height:1.55;max-width:440px;margin:22px auto 30px; }
+.motivation-card { position:relative;max-width:570px;margin:-8px auto 18px;padding:18px 48px 16px;border-radius:22px;background:linear-gradient(135deg,rgba(36,91,70,.095),rgba(217,173,91,.11));border:1px solid rgba(36,91,70,.10);opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease;overflow:hidden; }
+.motivation-card.visible { opacity:1;transform:translateY(0); }
+.motivation-card::after { content:'';position:absolute;width:100px;height:100px;right:-45px;top:-55px;border-radius:50%;background:rgba(255,255,255,.35); }
+.motivation-mark { position:absolute;left:18px;top:18px;color:var(--gold);font-size:18px; }
+.motivation-card p { position:relative;margin:0;color:var(--ink);font-family:"Playfair Display",serif;font-style:italic;font-size:clamp(17px,4vw,21px);line-height:1.35; }
+.motivation-card button { position:relative;margin-top:11px;padding:5px 9px;border:0;border-radius:9px;background:rgba(255,255,255,.45);color:var(--green);font-size:9px;font-weight:700;letter-spacing:.03em; }
+.motivation-card button span { display:inline-block;margin-right:3px;font-size:12px;transition:transform .25s; }.motivation-card button:active span{transform:rotate(90deg)}
 .voice-card { background:rgba(255,253,250,.88);backdrop-filter:blur(16px);box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.85);border-radius:26px;padding:18px 22px;display:flex;align-items:center;text-align:left;max-width:570px;margin:auto;transition:.25s; }
 .voice-card.listening { transform:scale(1.015);box-shadow:0 20px 60px rgba(49,92,73,.18); }
 .mic-button { position:relative;flex:0 0 auto;width:58px;height:58px;border:0;border-radius:50%;background:var(--green);display:grid;place-items:center;color:white;margin-right:17px; }
