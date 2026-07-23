@@ -196,12 +196,31 @@ function addFromText(text) {
 function setupVoice() {
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){$('#voiceHint').textContent='Voice input is not supported here — you can type below';$('#micButton').onclick=()=>showToast('Try Chrome or Safari for voice input');return;}
-  const rec=new SpeechRecognition();rec.lang=navigator.language||'en-US';rec.interimResults=true;rec.continuous=false;
-  rec.onstart=()=>{$('#voiceCard').classList.add('listening');$('#voiceTitle').textContent='I’m listening…';$('#voiceHint').textContent='Say a task, date, and time';};
-  rec.onresult=e=>{const text=Array.from(e.results).map(r=>r[0].transcript).join('');const parsed=parseNaturalTask(text);$('#voiceHint').textContent=parsed.title||text;if(e.results[e.results.length-1].isFinal)addFromText(text);};
-  rec.onend=()=>{$('#voiceCard').classList.remove('listening');$('#voiceTitle').textContent='Tap to plan with your voice';setTimeout(()=>{$('#voiceHint').textContent='Try “Lunch with Maya tomorrow at 12”';},2200);};
-  rec.onerror=e=>{showToast(e.error==='not-allowed'?'Microphone permission is needed':'I couldn’t hear that — please try again');};
-  $('#micButton').onclick=()=>{try{rec.start()}catch{rec.stop()}};
+  const rec=new SpeechRecognition();rec.lang=navigator.language||'en-US';rec.interimResults=true;rec.continuous=true;
+  let keepListening=false,submitted=false,voiceBase='',latestRecognition='',restartTimer;
+  const resetVoiceUi=()=>{$('#voiceCard').classList.remove('listening');$('#voiceTitle').textContent='Tap to plan with your voice';$('#micButton').setAttribute('aria-label','Start voice planning');setTimeout(()=>{if(!keepListening)$('#voiceHint').textContent='Try “Lunch with Maya tomorrow at 12, done”';},1800);};
+  rec.onstart=()=>{$('#voiceCard').classList.add('listening');$('#voiceTitle').textContent='Listening — say “done” to save';$('#micButton').setAttribute('aria-label','Stop voice planning');if(!voiceBase)$('#voiceHint').textContent='Say your task, date, time, then “done”';};
+  rec.onresult=e=>{
+    latestRecognition=Array.from(e.results).map(r=>r[0].transcript).join(' ').trim();
+    const text=[voiceBase,latestRecognition].filter(Boolean).join(' ').replace(/\s{2,}/g,' ').trim();
+    const command=text.replace(/\bdone[\s.!?]*$/i,'').replace(/[\s,;:-]+$/,'').trim(),parsed=parseNaturalTask(command);
+    $('#voiceHint').textContent=parsed.title||command||text;
+    if(e.results[e.results.length-1].isFinal&&/\bdone[\s.!?]*$/i.test(text)){
+      keepListening=false;submitted=true;clearTimeout(restartTimer);if(command)addFromText(command);rec.stop();
+    }
+  };
+  rec.onend=()=>{
+    if(keepListening&&!submitted){voiceBase=[voiceBase,latestRecognition].filter(Boolean).join(' ').trim();latestRecognition='';restartTimer=setTimeout(()=>{try{rec.start()}catch{}},250);}
+    else resetVoiceUi();
+  };
+  rec.onerror=e=>{
+    if(e.error==='not-allowed'){keepListening=false;showToast('Microphone permission is needed');}
+    else if(!['no-speech','aborted'].includes(e.error)){keepListening=false;showToast('Voice input stopped — please try again');}
+  };
+  $('#micButton').onclick=()=>{
+    if(keepListening){keepListening=false;clearTimeout(restartTimer);rec.stop();showToast('Voice planning cancelled');return;}
+    voiceBase='';latestRecognition='';submitted=false;keepListening=true;try{rec.start()}catch{keepListening=false;rec.stop();}
+  };
 }
 function showToast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),2300);}
 
