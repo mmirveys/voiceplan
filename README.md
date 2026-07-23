@@ -15,5 +15,6 @@ Then open `http://localhost:8080`. Chrome or Safari is recommended for voice inp
 - Natural-language voice and typed task capture
 - Today, tomorrow, weekday, and time recognition
 - Seven-day and all-task views
+- Focus mode with 25-minute work sessions, 5-minute breaks, and daily session tracking
 - Task editing, priorities, completion, and local persistence
 - Responsive mobile design and PWA installation

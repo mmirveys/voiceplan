@@ -8,6 +8,10 @@ let selectedDate = isoDate(new Date());
 let currentView = 'plan';
 let editingId = null;
 let deferredInstall;
+const timerDurations={focus:25*60,break:5*60};
+let timerMode='focus',timerRemaining=timerDurations.focus,timerRunning=false,timerEndAt=0,timerInterval;
+const sessionKey=`voiceplan-focus-${isoDate(new Date())}`;
+let completedSessions=Number(localStorage.getItem(sessionKey)||0);
 
 function isoDate(date) { const d = new Date(date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate()+n); return d; }
@@ -36,9 +40,16 @@ function renderDates() {
 }
 
 function selectPlanDate(date) {
-  selectedDate=date;currentView='plan';
-  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view==='plan'));
-  renderDates();renderTasks();
+  selectedDate=date;renderDates();showView('plan');
+}
+
+function showView(view) {
+  currentView=view;
+  $('#heroSection').hidden=view!=='plan';
+  $('#plannerSection').hidden=view==='focus';
+  $('#focusView').hidden=view!=='focus';
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  if(view!=='focus')renderTasks();
 }
 
 function renderTasks() {
@@ -104,8 +115,11 @@ function parseNaturalTask(text) {
       }
     }
   }
+  const hourWords=['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty','twenty-one','twenty-two','twenty-three'];
+  const wordTm=title.match(new RegExp(`\\bat\\s+(${hourWords.join('|')})\\s*(a\\.?m\\.?|p\\.?m\\.?)?(?:\\s*o[’']?\\s*clock)?\\b`,'i'));
   const tm=title.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?(?:\s*o[’']?\s*clock)?\b/i);
-  if(tm){let h=+tm[1],m=+(tm[2]||0),ampm=tm[3]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;if(h<24&&m<60){time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;title=title.replace(tm[0],'');}}
+  if(wordTm){let h=hourWords.indexOf(wordTm[1].toLowerCase())+1,ampm=wordTm[2]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;time=`${String(h).padStart(2,'0')}:00`;title=title.replace(wordTm[0],'');}
+  else if(tm){let h=+tm[1],m=+(tm[2]||0),ampm=tm[3]?.toLowerCase();if(ampm?.startsWith('p')&&h<12)h+=12;if(ampm?.startsWith('a')&&h===12)h=0;if(h<24&&m<60){time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;title=title.replace(tm[0],'');}}
   title=cleanTaskTitle(title);
   return {title:title.charAt(0).toUpperCase()+title.slice(1),date:isoDate(date),time};
 }
@@ -126,17 +140,51 @@ function setupVoice() {
 }
 function showToast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>el.classList.remove('show'),2300);}
 
+function renderTimer() {
+  const mins=Math.floor(timerRemaining/60),secs=timerRemaining%60,duration=timerDurations[timerMode];
+  $('#timerDisplay').textContent=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  $('#timerRing').style.setProperty('--progress',`${(1-timerRemaining/duration)*360}deg`);
+  $('#timerModeLabel').textContent=timerMode==='focus'?'FOCUS SESSION':'RESET BREAK';
+  $('#timerEncouragement').textContent=timerRunning?(timerMode==='focus'?'Stay with this moment':'Breathe and reset'):'Ready when you are';
+  $('#timerToggle').textContent=timerRunning?'Pause':timerMode==='focus'?'Start focus':'Start break';
+  document.querySelectorAll('[data-timer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.timerMode===timerMode));
+  $('#sessionTotal').textContent=completedSessions;
+  $('#sessionDots').innerHTML=Array.from({length:Math.min(completedSessions,8)},()=>'<i></i>').join('');
+  document.title=timerRunning?`${$('#timerDisplay').textContent} · VoicePlan`:'VoicePlan';
+}
+
+function stopTimer() { clearInterval(timerInterval);timerInterval=null;timerRunning=false; }
+function chooseTimerMode(mode) { stopTimer();timerMode=mode;timerRemaining=timerDurations[mode];renderTimer(); }
+function tickTimer() {
+  timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));renderTimer();
+  if(timerRemaining===0){
+    const finishedMode=timerMode;stopTimer();
+    if(finishedMode==='focus'){completedSessions++;localStorage.setItem(sessionKey,completedSessions);}
+    if(navigator.vibrate)navigator.vibrate([150,80,150]);
+    chooseTimerMode(finishedMode==='focus'?'break':'focus');
+    showToast(finishedMode==='focus'?'Focus complete — take a breath':'Break complete — ready to focus?');
+  }
+}
+function toggleTimer() {
+  if(timerRunning){timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));stopTimer();renderTimer();return;}
+  timerRunning=true;timerEndAt=Date.now()+timerRemaining*1000;timerInterval=setInterval(tickTimer,250);renderTimer();
+}
+
 $('#quickAdd').onclick=()=>{if($('#quickInput').value.trim()){addFromText($('#quickInput').value);$('#quickInput').value='';}};
 $('#quickInput').onkeydown=e=>{if(e.key==='Enter')$('#quickAdd').click();};
 $('#prevWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),-7)));
 $('#nextWeek').onclick=()=>selectPlanDate(isoDate(addDays(new Date(selectedDate+'T12:00:00'),7)));
 $('#datePicker').onchange=e=>{if(e.target.value)selectPlanDate(e.target.value);};
+document.querySelectorAll('[data-timer-mode]').forEach(b=>b.onclick=()=>chooseTimerMode(b.dataset.timerMode));
+$('#timerToggle').onclick=toggleTimer;
+$('#timerReset').onclick=()=>chooseTimerMode(timerMode);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&timerRunning)tickTimer();});
 $('#taskForm').addEventListener('submit',e=>{if(e.submitter?.value==='default')submitTask();});
 $('#clearCompleted').onclick=()=>{const before=tasks.length;tasks=tasks.filter(t=>!t.done);save();showToast(`${before-tasks.length} completed task${before-tasks.length===1?'':'s'} cleared`);};
 $('#openSettings').onclick=()=>$('#settingsDialog').showModal();
 $('#deleteAll').onclick=()=>{if(confirm('Delete every task? This cannot be undone.')){tasks=[];save();$('#settingsDialog').close();showToast('All tasks deleted');}};
-document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.bottom-nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;renderTasks();});
+document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#installButton').hidden=false;});
 $('#installButton').onclick=async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$('#installButton').hidden=true;}};
 if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
-setupGreeting();renderDates();renderTasks();setupVoice();
+setupGreeting();renderDates();renderTasks();renderTimer();setupVoice();
