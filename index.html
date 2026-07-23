@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f6f3ed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="VoicePlan — plan your day with your voice.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -91,6 +93,11 @@
             <button class="active" data-timer-mode="focus">Focus · 25 min</button>
             <button data-timer-mode="break">Break · 5 min</button>
           </div>
+          <div class="timer-adjust" aria-label="Adjust timer duration">
+            <button id="timerMinus" aria-label="Reduce timer by 5 minutes">− 5 min</button>
+            <span id="timerDurationLabel">25 minutes</span>
+            <button id="timerPlus" aria-label="Add 5 minutes">+ 5 min</button>
+          </div>
           <div class="timer-ring" id="timerRing">
             <div class="timer-ring-inner">
               <span id="timerModeLabel">FOCUS SESSION</span>
@@ -106,6 +113,9 @@
             <span id="sessionDots" aria-hidden="true"></span>
             <p><strong id="sessionTotal">0</strong> focus sessions completed today</p>
           </div>
+          <button class="alarm-button" id="enableAlarm">
+            <span>♬</span><span><strong>Enable alarm</strong><small>Sound and notification when time is up</small></span>
+          </button>
         </div>
 
         <div class="focus-note">

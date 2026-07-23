@@ -8,10 +8,12 @@ let selectedDate = isoDate(new Date());
 let currentView = 'plan';
 let editingId = null;
 let deferredInstall;
-const timerDurations={focus:25*60,break:5*60};
+const savedDurations=JSON.parse(localStorage.getItem('voiceplan-timer-durations')||'{}');
+const timerDurations={focus:savedDurations.focus||25*60,break:savedDurations.break||5*60};
 let timerMode='focus',timerRemaining=timerDurations.focus,timerRunning=false,timerEndAt=0,timerInterval;
 const sessionKey=`voiceplan-focus-${isoDate(new Date())}`;
 let completedSessions=Number(localStorage.getItem(sessionKey)||0);
+let alarmEnabled=localStorage.getItem('voiceplan-alarm-enabled')==='true',audioContext;
 
 function isoDate(date) { const d = new Date(date); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
 function addDays(date, n) { const d = new Date(date); d.setDate(d.getDate()+n); return d; }
@@ -148,9 +150,14 @@ function renderTimer() {
   $('#timerEncouragement').textContent=timerRunning?(timerMode==='focus'?'Stay with this moment':'Breathe and reset'):'Ready when you are';
   $('#timerToggle').textContent=timerRunning?'Pause':timerMode==='focus'?'Start focus':'Start break';
   document.querySelectorAll('[data-timer-mode]').forEach(b=>b.classList.toggle('active',b.dataset.timerMode===timerMode));
+  document.querySelector('[data-timer-mode="focus"]').textContent=`Focus · ${Math.round(timerDurations.focus/60)} min`;
+  document.querySelector('[data-timer-mode="break"]').textContent=`Break · ${Math.round(timerDurations.break/60)} min`;
+  $('#timerDurationLabel').textContent=`${Math.round(duration/60)} minutes`;
   $('#sessionTotal').textContent=completedSessions;
   $('#sessionDots').innerHTML=Array.from({length:Math.min(completedSessions,8)},()=>'<i></i>').join('');
   document.title=timerRunning?`${$('#timerDisplay').textContent} · VoicePlan`:'VoicePlan';
+  $('#enableAlarm').classList.toggle('enabled',alarmEnabled);
+  $('#enableAlarm').querySelector('strong').textContent=alarmEnabled?'Alarm enabled':'Enable alarm';
 }
 
 function stopTimer() { clearInterval(timerInterval);timerInterval=null;timerRunning=false; }
@@ -160,7 +167,7 @@ function tickTimer() {
   if(timerRemaining===0){
     const finishedMode=timerMode;stopTimer();
     if(finishedMode==='focus'){completedSessions++;localStorage.setItem(sessionKey,completedSessions);}
-    if(navigator.vibrate)navigator.vibrate([150,80,150]);
+    if(navigator.vibrate)navigator.vibrate([150,80,150]);notifyTimerFinished(finishedMode);
     chooseTimerMode(finishedMode==='focus'?'break':'focus');
     showToast(finishedMode==='focus'?'Focus complete — take a breath':'Break complete — ready to focus?');
   }
@@ -168,6 +175,27 @@ function tickTimer() {
 function toggleTimer() {
   if(timerRunning){timerRemaining=Math.max(0,Math.ceil((timerEndAt-Date.now())/1000));stopTimer();renderTimer();return;}
   timerRunning=true;timerEndAt=Date.now()+timerRemaining*1000;timerInterval=setInterval(tickTimer,250);renderTimer();
+}
+function adjustTimer(minutes) {
+  const previous=timerDurations[timerMode],next=Math.min(180*60,Math.max(60,previous+minutes*60)),difference=next-previous;
+  timerDurations[timerMode]=next;timerRemaining=Math.max(0,timerRemaining+difference);
+  if(timerRunning)timerEndAt+=difference*1000;
+  localStorage.setItem('voiceplan-timer-durations',JSON.stringify(timerDurations));renderTimer();
+}
+function playAlarm() {
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!alarmEnabled||!AudioContextClass)return;
+  audioContext=audioContext||new AudioContextClass();audioContext.resume();
+  [0,.28,.56].forEach((delay,i)=>{const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.frequency.value=i===1?740:880;gain.gain.setValueAtTime(.0001,audioContext.currentTime+delay);gain.gain.exponentialRampToValueAtTime(.22,audioContext.currentTime+delay+.02);gain.gain.exponentialRampToValueAtTime(.0001,audioContext.currentTime+delay+.22);oscillator.start(audioContext.currentTime+delay);oscillator.stop(audioContext.currentTime+delay+.24);});
+}
+async function enableAlarm() {
+  alarmEnabled=true;localStorage.setItem('voiceplan-alarm-enabled','true');
+  const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(AudioContextClass){audioContext=audioContext||new AudioContextClass();await audioContext.resume();playAlarm();}
+  if('Notification'in window&&Notification.permission==='default')await Notification.requestPermission();
+  renderTimer();showToast('Notification'in window&&Notification.permission==='granted'?'Alarm and notifications enabled':'Alarm sound enabled');
+}
+async function notifyTimerFinished(mode) {
+  playAlarm();
+  if('Notification'in window&&Notification.permission==='granted'&&'serviceWorker'in navigator){const registration=await navigator.serviceWorker.ready;registration.showNotification('VoicePlan timer complete',{body:mode==='focus'?'Focus complete — time for a break.':'Break complete — ready to focus?',icon:'./icon.svg',tag:'voiceplan-timer'});}
 }
 
 $('#quickAdd').onclick=()=>{if($('#quickInput').value.trim()){addFromText($('#quickInput').value);$('#quickInput').value='';}};
@@ -178,6 +206,9 @@ $('#datePicker').onchange=e=>{if(e.target.value)selectPlanDate(e.target.value);}
 document.querySelectorAll('[data-timer-mode]').forEach(b=>b.onclick=()=>chooseTimerMode(b.dataset.timerMode));
 $('#timerToggle').onclick=toggleTimer;
 $('#timerReset').onclick=()=>chooseTimerMode(timerMode);
+$('#timerMinus').onclick=()=>adjustTimer(-5);
+$('#timerPlus').onclick=()=>adjustTimer(5);
+$('#enableAlarm').onclick=enableAlarm;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&timerRunning)tickTimer();});
 $('#taskForm').addEventListener('submit',e=>{if(e.submitter?.value==='default')submitTask();});
 $('#clearCompleted').onclick=()=>{const before=tasks.length;tasks=tasks.filter(t=>!t.done);save();showToast(`${before-tasks.length} completed task${before-tasks.length===1?'':'s'} cleared`);};
@@ -186,5 +217,8 @@ $('#deleteAll').onclick=()=>{if(confirm('Delete every task? This cannot be undon
 document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#installButton').hidden=false;});
 $('#installButton').onclick=async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$('#installButton').hidden=true;}};
-if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+if('serviceWorker' in navigator){
+  let refreshing=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!refreshing){refreshing=true;location.reload();}});
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').then(registration=>registration.update()));
+}
 setupGreeting();renderDates();renderTasks();renderTimer();setupVoice();
